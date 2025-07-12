@@ -8,6 +8,29 @@ import io
 import time
 import serial
 
+# --- 0. Arduino串口通信初始化 ---
+try:
+    arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)  # 可能需要调整端口号
+    time.sleep(2)  # 等待Arduino初始化
+    print("[Pi INFO] Arduino connected successfully.")
+except Exception as e:
+    print(f"[Pi ERROR] Failed to connect to Arduino: {e}")
+    arduino = None
+
+def send_arduino_command(command):
+    """向Arduino发送指令"""
+    if arduino and arduino.is_open:
+        try:
+            arduino.write((command + '\n').encode())
+            arduino.flush()
+            print(f"[ARDUINO CMD] Sent: {command}")
+            # 等待Arduino响应（可选）
+            time.sleep(0.1)
+        except Exception as e:
+            print(f"[ARDUINO ERROR] Failed to send command: {e}")
+    else:
+        print("[ARDUINO ERROR] Arduino not connected.")
+
 # --- 1. 摄像头初始化 ---
 print("[Pi INFO] Initializing camera...")
 picam2 = Picamera2()
@@ -24,41 +47,43 @@ app = Flask(__name__)
 def move_forward():
     """控制小车前进"""
     print("[ROBOT ACTION] Moving forward...")
-    # 在此处添加控制左右轮电机正转的代码
+    send_arduino_command("FORWARD")
 
 def move_backward():
     """控制小车后退"""
     print("[ROBOT ACTION] Moving backward...")
-    # 在此处添加控制左右轮电机反转的代码
+    send_arduino_command("BACKWARD")
 
 def turn_left():
     """控制小车左转"""
     print("[ROBOT ACTION] Turning left...")
-    # 在此处添加控制右轮正转、左轮反转（或停止）的代码
+    send_arduino_command("LEFT")
 
 def turn_right():
     """控制小车右转"""
     print("[ROBOT ACTION] Turning right...")
-    # 在此处添加控制左轮正转、右轮反转（或停止）的代码
+    send_arduino_command("RIGHT")
 
 def stop_all_motors():
     """停止所有移动"""
     print("[ROBOT ACTION] Stopping all movement.")
-    # 在此处添加让所有电机停止的代码
+    send_arduino_command("STOP")
 
 def fetch_drink(drink_name):
     """执行抓取饮料的机械臂动作序列"""
-    print(f"[ROBOT ACTION] Starting pickup ...")
+    print(f"[ROBOT ACTION] Starting pickup for {drink_name}...")
+    # 可以发送特定的抓取指令
+    send_arduino_command(f"FETCH:{drink_name}")
 
 def return_to_start_position():
     """返回到初始位置"""
     print("[ROBOT ACTION] Returning to start position...")
-    # 在此处添加返回原位的代码
+    send_arduino_command("RETURN_HOME")
 
 def turn_180_degrees():
     """转身180度"""
     print("[ROBOT ACTION] Turning 180 degrees...")
-    # 在此处添加转身的代码
+    send_arduino_command("TURN_180")
     
 # --- 4. 指令解析与执行 ---
 def execute_robot_command(command):
@@ -114,4 +139,12 @@ def command_receiver():
 # --- 6. 主程序入口 ---
 if __name__ == '__main__':
     print("[SERVER START] Raspberry Pi Robot Server is running...")
-    app.run(host='0.0.0.0', port=5000, threaded=True)
+    try:
+        app.run(host='0.0.0.0', port=5000, threaded=True)
+    except KeyboardInterrupt:
+        print("\n[SERVER STOP] Shutting down server...")
+    finally:
+        # 关闭Arduino串口连接
+        if arduino and arduino.is_open:
+            arduino.close()
+            print("[Pi INFO] Arduino connection closed.")
