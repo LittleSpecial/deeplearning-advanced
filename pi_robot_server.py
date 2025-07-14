@@ -10,7 +10,7 @@ import serial
 
 # --- 0. Arduino串口通信初始化 ---
 try:
-    arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)  # 可能需要调整端口号
+    arduino = serial.Serial('/dev/ttyACM0', 115200, timeout=1)  # 可能需要调整端口号
     time.sleep(2)  # 等待Arduino初始化
     print("[Pi INFO] Arduino connected successfully.")
 except Exception as e:
